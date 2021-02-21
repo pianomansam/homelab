@@ -1,0 +1,133 @@
+version: "3.7"
+
+# More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      # - "8081:80/tcp"
+      # - "443:443/tcp"
+    environment:
+      TZ: 'America/Chicago'
+      # WEBPASSWORD: 'set a secure password here or it will be random'
+    # Volumes store your data between container upgrades
+    volumes:
+      - './data/pihole/pihole/:/etc/pihole/'
+      - './data/pihole/dnsmasq.d/:/etc/dnsmasq.d/'
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    # cap_add:
+      # - NET_ADMIN
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.tls=true"
+      - "traefik.http.routers.pihole.rule=Host(`pihole.${HOSTNAME}`)"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    # ports:
+      # - "8000:8000/tcp"
+      # - "9000:9000/tcp"
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './data/portainer/:/data'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${HOSTNAME}`)"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  omada:
+    container_name: omada
+    image: mbentley/omada-controller:4.2
+    restart: unless-stopped
+    environment:
+      - TZ=America/Detroit
+      # - MANAGE_HTTPS_PORT=443
+    ports:
+      # - 8088:8088
+      # - 8043:443
+      # - 8843:8843
+      - 29810:29810
+      - 29810:29810/udp
+      - 29811:29811
+      - 29811:29811/udp
+      - 29812:29812
+      - 29812:29812/udp
+      - 29813:29813
+      - 29813:29813/udp
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=0
+    healthcheck:
+      test: wget --quiet --tries=1 --no-check-certificate -O /dev/null --server-response --timeout=5 https://127.0.0.1:443/login || exit 1
+      start_period: 5m
+    volumes:
+      - ./data/omada/data:/opt/tplink/EAPController/data
+      - ./data/omada/work:/opt/tplink/EAPController/work
+      - ./data/omada/logs:/opt/tplink/EAPController/logs
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.omada.tls=true"
+      - "traefik.http.routers.omada.rule=Host(`omada.${HOSTNAME}`)"
+      - "traefik.http.services.omada.loadbalancer.server.scheme=https"
+      - "traefik.http.services.omada.loadbalancer.server.port=443"
+  # traefik:
+  #   image: traefik:2.4
+  #   container_name: "traefik"
+  #   restart: unless-stopped
+  #   command:
+  #     - "--log.level=DEBUG"
+  #     - "--api=true"
+  #     # - --log.level=INFO
+  #     # - --api
+  #     - --api.dashboard=true
+  #     - --api.insecure=true
+  #     - --api.debug=true
+  #     # - --entrypoints.web-secure.http.tls=true
+  #     - --providers.docker.exposedbydefault=false
+  #     - "--entrypoints.web.address=:80"
+  #     - "--entrypoints.traefik.address=:8080"
+  #   ports:
+  #     - '80:80'
+  #     - '443:443'
+  #     # - '8080:8080' # Dashboard
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   labels:
+  #       - "traefik.enable=true"
+  #       # - "traefik.http.routers.dashboard.rule=PathPrefix(`/api`) || PathPrefix(`/dashboard`)"
+  #       # - "traefik.http.routers.dashboard.entrypoints=traefik"
+  #       # - "traefik.http.routers.dashboard.service=api@internal"
+  #       - "traefik.http.routers.dashboard.rule=Host(`${HOSTNAME}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+  #       - "traefik.http.routers.dashboard.service=api@internal"
+  traefik:
+    image: "traefik:latest"
+    container_name: "traefik"
+    restart: unless-stopped
+    command:
+      - "--log.level=DEBUG"
+      - "--api=true"
+      # - "--api.dashboard=true"
+      # - --api.insecure=true
+      # - --api.debug=true
+      # - "--ping=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # - --entryPoints.web.forwardedHeaders.insecure
+      - --serversTransport.insecureSkipVerify=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+      # - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
