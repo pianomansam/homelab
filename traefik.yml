@@ -18,6 +18,11 @@ http:
     mytransport:
       insecureSkipVerify: true
 
+https:
+  serversTransports:
+    mytransport:
+      insecureSkipVerify: true
+
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
@@ -26,7 +31,7 @@ providers:
 certificatesResolvers:
   cloudflare:
     acme:
-      # email: ***REMOVED***
+      email: pianomansam@example.com
       storage: acme.json
       dnsChallenge:
         provider: cloudflare
