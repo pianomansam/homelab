@@ -110,24 +110,47 @@ services:
     image: "traefik:latest"
     container_name: "traefik"
     restart: unless-stopped
+    environment:
+      # - CF_API_EMAIL=${CF_API_EMAIL}
+      # - CF_API_KEY=${CF_API_KEY}
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     command:
       - "--log.level=DEBUG"
-      - "--api=true"
-      # - "--api.dashboard=true"
-      # - --api.insecure=true
-      # - --api.debug=true
-      # - "--ping=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      # - --entryPoints.web.forwardedHeaders.insecure
-      - --serversTransport.insecureSkipVerify=true
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entryPoint.to=websecure
-      - --entrypoints.web.http.redirections.entryPoint.scheme=https
-      - --entrypoints.websecure.address=:443
+    #   - "--api=true"
+    #   # - "--api.dashboard=true"
+    #   # - --api.insecure=true
+    #   # - --api.debug=true
+    #   # - "--ping=true"
+    #   - "--providers.docker=true"
+    #   - "--providers.docker.exposedbydefault=false"
+    #   # - --entryPoints.web.forwardedHeaders.insecure
+    #   - --serversTransport.insecureSkipVerify=true
+    #   - --entrypoints.web.address=:80
+    #   - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    #   - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    #   - --entrypoints.websecure.address=:443
+      - "--certificatesResolvers.cloudflare.acme.email=${ACME_EMAIL}"
     ports:
       - "80:80"
       - "443:443"
       # - "8080:8080"
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - ./traefik.yml:/traefik.yml:ro
+      - ./data/traefik/acme.json:/acme.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${HOSTNAME}`)"
+      # - "traefik.http.middlewares.traefik-auth.basicauth.users=USER:PASSWORD"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${HOSTNAME}`)"
+      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].main=${HOSTNAME}"
+      - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${HOSTNAME}"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
