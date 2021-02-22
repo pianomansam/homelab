@@ -8,8 +8,15 @@ api:
 entryPoints:
   http:
     address: ":80"
+    forwardedHeaders:
+      insecure: true
   https:
     address: ":443"
+
+http:
+  serversTransports:
+    mytransport:
+      insecureSkipVerify: true
 
 providers:
   docker:
