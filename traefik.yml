@@ -1,3 +1,6 @@
+log:
+  level: DEBUG
+
 api:
   dashboard: true
   debug: true
@@ -16,6 +19,7 @@ providers:
 certificatesResolvers:
   cloudflare:
     acme:
+      # email: ***REMOVED***
       storage: acme.json
       dnsChallenge:
         provider: cloudflare
