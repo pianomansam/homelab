@@ -13,15 +13,8 @@ entryPoints:
   https:
     address: ":443"
 
-http:
-  serversTransports:
-    mytransport:
-      insecureSkipVerify: true
-
-https:
-  serversTransports:
-    mytransport:
-      insecureSkipVerify: true
+serversTransports:
+    insecureSkipVerify: true
 
 providers:
   docker:
