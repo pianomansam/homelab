@@ -1,2 +1,2 @@
-FROM: alpine
+FROM alpine
 RUN apk --update add --no-cache openssh
