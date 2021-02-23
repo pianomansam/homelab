@@ -4,7 +4,10 @@ services:
   tunnel:
     container_name: tunnel
     build: ./tunnel
-    # command: sh -c "cd /app && yarn && yarn watch"
+    restart: unless-stopped
+    volumes:
+      - '/root/.ssh:/root/.ssh:ro'
+    command: sh -c "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"
   whoami:
     container_name: whoami
     image: traefik/whoami
