@@ -2,6 +2,21 @@ version: "3.7"
 
 # More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
 services:
+  tunnel:
+    container_name: tunnel
+    build:
+      context: .
+      dockerfile: Dockerfile-tunnel
+    # command: sh -c "cd /app && yarn && yarn watch"
+  whoami:
+    container_name: whoami
+    image: traefik/whoami
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.tls=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.${HOSTNAME}`)"
+      - "traefik.http.services.whoami.loadbalancer.server.port=80"
   pihole:
     container_name: pihole
     image: pihole/pihole:latest
@@ -26,6 +41,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.pihole.tls=true"
+      - "traefik.http.routers.pihole.entrypoints=websecure"
       - "traefik.http.routers.pihole.rule=Host(`pihole.${HOSTNAME}`)"
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
   portainer:
@@ -41,6 +57,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.tls=true"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.rule=Host(`portainer.${HOSTNAME}`)"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
   omada:
@@ -74,6 +91,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.omada.tls=true"
+      - "traefik.http.routers.omada.entrypoints=websecure"
       - "traefik.http.routers.omada.rule=Host(`omada.${HOSTNAME}`)"
       - "traefik.http.services.omada.loadbalancer.server.scheme=https"
       - "traefik.http.services.omada.loadbalancer.server.port=443"
@@ -129,6 +147,7 @@ services:
       - --entrypoints.web.http.redirections.entryPoint.to=websecure
       - --entrypoints.web.http.redirections.entryPoint.scheme=https
       - --entrypoints.websecure.address=:443
+      - --entrypoints.external.address=:8443
       - "--certificatesResolvers.cloudflare.acme.email=${ACME_EMAIL}"
       - "--certificatesResolvers.cloudflare.acme.storage=acme.json"
       - "--certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare"
@@ -136,6 +155,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8443:8443"
       # - "8080:8080"
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -144,12 +164,12 @@ services:
       - ./data/traefik/acme.json:/acme.json
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.entrypoints=http"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${HOSTNAME}`)"
+      # - "traefik.http.routers.traefik.entrypoints=http"
+      # - "traefik.http.routers.traefik.rule=Host(`traefik.${HOSTNAME}`)"
       # - "traefik.http.middlewares.traefik-auth.basicauth.users=USER:PASSWORD"
-      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
-      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      # - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      # - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=websecure"
       - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${HOSTNAME}`)"
       # - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
       - "traefik.http.routers.traefik-secure.tls=true"
