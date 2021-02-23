@@ -64,9 +64,9 @@ services:
       - 29813:29813/udp
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=0
-    healthcheck:
-      test: wget --quiet --tries=1 --no-check-certificate -O /dev/null --server-response --timeout=5 https://127.0.0.1:443/login || exit 1
-      start_period: 5m
+    # healthcheck:
+    #   test: wget --quiet --tries=1 --no-check-certificate -O /dev/null --server-response --timeout=5 https://127.0.0.1:443/login || exit 1
+    #   start_period: 5m
     volumes:
       - ./data/omada/data:/opt/tplink/EAPController/data
       - ./data/omada/work:/opt/tplink/EAPController/work
@@ -115,21 +115,24 @@ services:
       # - CF_API_KEY=${CF_API_KEY}
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
     command:
-      # - "--log.level=DEBUG"
-    #   - "--api=true"
-    #   # - "--api.dashboard=true"
-    #   # - --api.insecure=true
-    #   # - --api.debug=true
-    #   # - "--ping=true"
-    #   - "--providers.docker=true"
-    #   - "--providers.docker.exposedbydefault=false"
-    #   # - --entryPoints.web.forwardedHeaders.insecure
-    #   - --serversTransport.insecureSkipVerify=true
-    #   - --entrypoints.web.address=:80
-    #   - --entrypoints.web.http.redirections.entryPoint.to=websecure
-    #   - --entrypoints.web.http.redirections.entryPoint.scheme=https
-    #   - --entrypoints.websecure.address=:443
+      - "--log.level=DEBUG"
+      # - "--api"
+      - "--api.dashboard=true"
+      # - --api.insecure=true
+      - --api.debug=true
+      # - "--ping=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # - --entryPoints.web.forwardedHeaders.insecure
+      - --serversTransport.insecureSkipVerify=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.websecure.address=:443
       - "--certificatesResolvers.cloudflare.acme.email=${ACME_EMAIL}"
+      - "--certificatesResolvers.cloudflare.acme.storage=acme.json"
+      - "--certificatesResolvers.cloudflare.acme.dnsChallenge.provider=cloudflare"
+      - "--certificatesResolvers.cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
     ports:
       - "80:80"
       - "443:443"
@@ -137,7 +140,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - ./traefik.yml:/traefik.yml:ro
+      # - ./traefik.yml:/traefik.yml:ro
       - ./data/traefik/acme.json:/acme.json
     labels:
       - "traefik.enable=true"
