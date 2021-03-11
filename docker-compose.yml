@@ -7,10 +7,9 @@ services:
     restart: unless-stopped
     volumes:
       - '/root/.ssh:/root/.ssh:ro'
-    # command: sh -c "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"
     depends_on:
       - "traefik"
-    command: ["/root/wait-for-it.sh", "traefik:8443", "--", "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"]
+    command: ["/root/wait-for-it.sh", "traefik:8443", "--", "ssh", "-NR", ":443:traefik:8443", "root@${HOSTNAME}", "-v"]
   airconnect:
     container_name: airconnect
     image: 1activegeek/airconnect
