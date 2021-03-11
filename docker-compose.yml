@@ -7,7 +7,10 @@ services:
     restart: unless-stopped
     volumes:
       - '/root/.ssh:/root/.ssh:ro'
-    command: sh -c "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"
+    # command: sh -c "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"
+    depends_on:
+      - "traefik"
+    command: ["/root/wait-for-it.sh", "traefik:8443", "--", "ssh -NR :443:traefik:8443 root@${HOSTNAME} -v"]
   airconnect:
     container_name: airconnect
     image: 1activegeek/airconnect
@@ -27,15 +30,16 @@ services:
     container_name: diun
     volumes:
       - "./data/diun:/data"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
     environment:
       - "TZ=America/Detroit"
-      - "LOG_LEVEL=info"
+      - "LOG_LEVEL=debug"
       - "LOG_JSON=false"
       - "DIUN_WATCH_WORKERS=20"
       - "DIUN_WATCH_SCHEDULE=0 */6 * * *"
       - "DIUN_PROVIDERS_DOCKER=true"
-      - "DIUN_PROVIDERS_DOCKER_WATCHSTOPPED=true"
+      - "DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT=true"
+      - "DIUN_PROVIDERS_DOCKER_WATCHSTOPPED=false"
       - "DIUN_NOTIF_MAIL_HOST=${DIUN_NOTIF_MAIL_HOST}"
       - "DIUN_NOTIF_MAIL_PORT=${DIUN_NOTIF_MAIL_PORT}"
       - "DIUN_NOTIF_MAIL_SSL=${DIUN_NOTIF_MAIL_SSL}"
@@ -89,6 +93,25 @@ services:
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.rule=Host(`portainer.${HOSTNAME}`)"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+  home-assistant:
+    container_name: home-assistant
+    image: homeassistant/home-assistant:stable
+    volumes:
+      - ./data/homeassistant:/config
+    environment:
+      - TZ=America/Detroit
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - 8123
+    ports:
+      - "8123:8123"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.home-assistant.tls=true"
+      - "traefik.http.routers.home-assistant.entrypoints=websecure"
+      - "traefik.http.routers.home-assistant.rule=Host(`home-assistant.${HOSTNAME}`)"
+      - "traefik.http.services.home-assistant.loadbalancer.server.port=8123"
   omada:
     container_name: omada
     image: mbentley/omada-controller:4.2
@@ -124,35 +147,6 @@ services:
       - "traefik.http.routers.omada.rule=Host(`omada.${HOSTNAME}`)"
       - "traefik.http.services.omada.loadbalancer.server.scheme=https"
       - "traefik.http.services.omada.loadbalancer.server.port=443"
-  # traefik:
-  #   image: traefik:2.4
-  #   container_name: "traefik"
-  #   restart: unless-stopped
-  #   command:
-  #     - "--log.level=DEBUG"
-  #     - "--api=true"
-  #     # - --log.level=INFO
-  #     # - --api
-  #     - --api.dashboard=true
-  #     - --api.insecure=true
-  #     - --api.debug=true
-  #     # - --entrypoints.web-secure.http.tls=true
-  #     - --providers.docker.exposedbydefault=false
-  #     - "--entrypoints.web.address=:80"
-  #     - "--entrypoints.traefik.address=:8080"
-  #   ports:
-  #     - '80:80'
-  #     - '443:443'
-  #     # - '8080:8080' # Dashboard
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   labels:
-  #       - "traefik.enable=true"
-  #       # - "traefik.http.routers.dashboard.rule=PathPrefix(`/api`) || PathPrefix(`/dashboard`)"
-  #       # - "traefik.http.routers.dashboard.entrypoints=traefik"
-  #       # - "traefik.http.routers.dashboard.service=api@internal"
-  #       - "traefik.http.routers.dashboard.rule=Host(`${HOSTNAME}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
-  #       - "traefik.http.routers.dashboard.service=api@internal"
   traefik:
     image: "traefik:latest"
     container_name: "traefik"
@@ -206,3 +200,5 @@ services:
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=${HOSTNAME}"
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${HOSTNAME}"
       - "traefik.http.routers.traefik-secure.service=api@internal"
+    extra_hosts: 
+      - host.docker.internal:172.17.0.1
