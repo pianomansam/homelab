@@ -9,7 +9,7 @@ services:
       - '/root/.ssh:/root/.ssh:ro'
     depends_on:
       - "traefik"
-    command: ["/root/wait-for-it.sh", "traefik:8443", "--", "ssh", "-NR", ":443:traefik:8443", "root@${HOSTNAME}", "-v"]
+    command: ["/root/wait-for-it.sh", "traefik:8443", "--", "ssh", "-NR", ":443:traefik:8443", "root@${TUNNEL_IP}", "-v"]
   airconnect:
     container_name: airconnect
     image: 1activegeek/airconnect
@@ -111,9 +111,26 @@ services:
       - "traefik.http.routers.home-assistant.entrypoints=websecure"
       - "traefik.http.routers.home-assistant.rule=Host(`home-assistant.${HOSTNAME}`)"
       - "traefik.http.services.home-assistant.loadbalancer.server.port=8123"
+  broadlinkmanager:
+    image: techblog/broadlinkmanager
+    network_mode: host
+    container_name: broadlinkmanager
+    restart: unless-stopped
+    volumes:
+      - ./data/broadlinkmanager:/opt/broadlinkmanager/data
+    expose:
+      - 7020
+    ports:
+      - "7020:7020"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.broadlink.tls=true"
+      - "traefik.http.routers.broadlink.entrypoints=websecure"
+      - "traefik.http.routers.broadlink.rule=Host(`broadlink.${HOSTNAME}`)"
+      - "traefik.http.services.broadlink.loadbalancer.server.port=7020"
   omada:
     container_name: omada
-    image: mbentley/omada-controller:4.2
+    image: mbentley/omada-controller:4.3
     restart: unless-stopped
     environment:
       - TZ=America/Detroit
